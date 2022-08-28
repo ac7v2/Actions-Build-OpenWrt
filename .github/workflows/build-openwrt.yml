@@ -119,15 +119,15 @@ jobs:
       id: update-feeds
       if: steps.load-custom-feeds.outputs.status == 'success' && !cancelled()
       run: |
-      cd openwrt && ./scripts/feeds update -a
-      echo "::set-output name=status::success"
+        cd openwrt && ./scripts/feeds update -a
+        echo "::set-output name=status::success"
 
     - name: Install feeds
       id: install-feeds
       if: steps.update-feeds.outputs.status == 'success' && !cancelled()
       run: |
-      cd openwrt && ./scripts/feeds install -a
-      echo "::set-output name=status::success"
+        cd openwrt && ./scripts/feeds install -a
+        echo "::set-output name=status::success"
 
     - name: Load custom configuration
       id: load-custom-config
@@ -175,8 +175,8 @@ jobs:
       id: check-space-usage
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-      df -hT
-      echo "::set-output name=status::success"
+        df -hT
+        echo "::set-output name=status::success"
 
     - name: Upload bin directory
       id: upload-bin
