@@ -44,8 +44,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         if: ${{ success() }} && !cancelled()
         run: >-
-          sudo rm -rf /etc/apt/
-          sources.list.d/*
+          sudo rm -rf /etc/apt/sources.list.d/*
           /usr/share/dotnet
           /usr/local/lib/android
           /opt/ghc
