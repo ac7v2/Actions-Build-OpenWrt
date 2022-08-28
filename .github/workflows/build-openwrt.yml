@@ -118,13 +118,15 @@ jobs:
     - name: Update feeds
       id: update-feeds
       if: steps.load-custom-feeds.outputs.status == 'success' && !cancelled()
-      run: cd openwrt && ./scripts/feeds update -a
+      run: |
+      cd openwrt && ./scripts/feeds update -a
       echo "::set-output name=status::success"
 
     - name: Install feeds
       id: install-feeds
       if: steps.update-feeds.outputs.status == 'success' && !cancelled()
-      run: cd openwrt && ./scripts/feeds install -a
+      run: |
+      cd openwrt && ./scripts/feeds install -a
       echo "::set-output name=status::success"
 
     - name: Load custom configuration
