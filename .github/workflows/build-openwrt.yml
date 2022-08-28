@@ -51,24 +51,7 @@ jobs:
           /opt/ghc
 
           sudo -E apt-get -qq update
-
-          sudo -E apt-get -qq
-          install build-essential
-          ccache ecj fastjar file
-          g++ gawk gettext git
-          java-propose-classpath
-          libelf-dev libncurses5-dev
-          libncursesw5-dev
-          libssl-dev python
-          python2.7-dev python3
-          unzip wget
-          python-distutils-extra
-          python3-setuptools
-          python3-dev
-          rsync subversion swig time
-          xsltproc zlib1g-dev
-          libbpf-dev
-
+ 
           sudo -E apt-get -qq
           install build-essential
           gawk gcc-multilib flex git
