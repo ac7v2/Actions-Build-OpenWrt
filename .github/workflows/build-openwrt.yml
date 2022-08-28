@@ -54,11 +54,10 @@ jobs:
 
           sudo -E apt-get -qq
           install build-essential
-          gawk gcc-multilib flex git
-          gettext libncurses5-dev
-          libssl-dev
-          python3-distutils rsync
-          unzip zlib1g-dev
+          gawk flex git
+          libncurses5-dev
+          libssl-dev python3-distutils
+          rsync unzip zlib1g-dev
 
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
 
