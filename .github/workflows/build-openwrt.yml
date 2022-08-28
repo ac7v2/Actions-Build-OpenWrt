@@ -241,7 +241,8 @@ jobs:
         run: |
           curl -fsSL git.io/file-transfer | sh
           >
-            ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1
+            ./transfer cow --block 2621440 -s -p 64 
+            --no-progress ${FIRMWARE} 2>&1
             | tee cowtransfer.log
           >
             echo "::warning file=cowtransfer.com::$(cat cowtransfer.log
@@ -259,7 +260,7 @@ jobs:
           >
             ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1
             | tee wetransfer.log
-          > 
+          >
             echo "::warning file=wetransfer.com::$(cat wetransfer.log
             | grep https)"
           >
@@ -269,18 +270,22 @@ jobs:
 
       - name: Generate release tag
         id: tag
-        if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
+        if: ${{ success() }} && env.UPLOAD_RELEASE == 'true' && !cancelled()
         run: |
           echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
           touch release.txt
-          [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
-          [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
+          >
+            [ $UPLOAD_COWTRANSFER = true ]
+            && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
+          >
+            [ $UPLOAD_WETRANSFER = true ]
+            && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
           echo "::set-output name=status::success"
 
       - name: Upload firmware to release
         id: upload-release
         uses: softprops/action-gh-release@v1
-        if: ${{ success() }} && steps.tag.outputs.status == 'success' && !cancelled()
+        if: ${{ success() }} && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -305,7 +310,7 @@ jobs:
           delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+  
       - name: Create latest tag
         id: create-latest-tag
         uses: actions/github-script@v5
