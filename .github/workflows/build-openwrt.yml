@@ -51,7 +51,7 @@ jobs:
           /opt/ghc
 
           sudo -E apt-get -qq update
- 
+
           sudo -E apt-get -qq
           install build-essential
           gawk gcc-multilib flex git
