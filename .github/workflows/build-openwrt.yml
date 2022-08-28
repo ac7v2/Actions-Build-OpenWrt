@@ -82,13 +82,13 @@ jobs:
           # run: |
             # git fetch upstream pull/4528/head:qca8k-backport
             # git merge qca8k-backport
-        
+
       # - name: "Add Pull Request #4562"
           # working-directory: /workdir/openwrt
           # run: |
               # git fetch upstream pull/4562/head:dsa-qca8k-leds
               # git merge dsa-qca8k-leds
-    
+
       # - name: "Add Pull Request #4619"
           # working-directory: /workdir/openwrt
           # continue-on-error: true
