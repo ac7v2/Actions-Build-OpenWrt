@@ -49,7 +49,7 @@ jobs:
           /usr/share/dotnet
           /usr/local/lib/android
           /opt/ghc
- 
+
           sudo -E apt-get -qq update
           >-
             sudo -E apt-get -qq
