@@ -36,13 +36,12 @@ jobs:
     - name: Checkout
       id: checkout
       uses: actions/checkout@main
-      run: echo "::set-output name=status::success"
 
     - name: Initialization environment
       id: initialize
       env:
         DEBIAN_FRONTEND: noninteractive
-      if: steps.checkout.outputs.status == 'success' && !cancelled()
+      if: ${{ success() }} && !cancelled()
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get -qq update
@@ -243,7 +242,6 @@ jobs:
         tag_name: ${{ steps.tag.outputs.release_tag }}
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
-      run: echo "::set-output name=status::success" 
 
     - name: Delete workflow runs
       id: delete-old-workflows
@@ -252,7 +250,6 @@ jobs:
       with:
         retain_days: 1
         keep_minimum_runs: 3
-      run: echo "::set-output name=status::success"
 
     - name: Remove old Releases
       id: remove-old-releases
