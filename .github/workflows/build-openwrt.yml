@@ -198,8 +198,8 @@ jobs:
       - name: Upload bin directory
         uses: actions/upload-artifact@main
         if: >
-          steps.compile.outputs.status == 'success' 
-          && env.UPLOAD_BIN_DIR == 'true' 
+          steps.compile.outputs.status == 'success'
+          && env.UPLOAD_BIN_DIR == 'true'
           && !cancelled()
         with:
           name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -208,8 +208,8 @@ jobs:
       - name: Organize files
         id: organize
         if: >
-          steps.compile.outputs.status == 'success' 
-          && env.UPLOAD_FIRMWARE == 'true' 
+          steps.compile.outputs.status == 'success'
+          && env.UPLOAD_FIRMWARE == 'true'
           && !cancelled()
         run: |
           cd openwrt/bin/targets/*/*
@@ -233,14 +233,14 @@ jobs:
           && !cancelled()
         run: >-
           curl -fsSL git.io/file-transfer | sh
-          
+ 
           ./transfer cow --block 2621440 -s -p 64
           --no-progress ${FIRMWARE} 2>&1
           | tee cowtransfer.log
-          
+
           echo "::warning file=cowtransfer.com::$(cat cowtransfer.log
           | grep https)"
-          
+
           echo "::set-output name=url::$(cat cowtransfer.log
           | grep https
           | cut -f3 -d" ")"
@@ -301,7 +301,7 @@ jobs:
       - name: Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
         if: >-
-          steps.tag.outputs.status == 'success' 
+          steps.tag.outputs.status == 'success'
           && !cancelled()
         with:
           retain_days: 1
