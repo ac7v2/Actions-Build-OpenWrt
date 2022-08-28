@@ -55,27 +55,27 @@ jobs:
             sudo -E apt-get -qq
             install build-essential
             ccache ecj fastjar file
-            g++ gawk gettext git 
+            g++ gawk gettext git
             java-propose-classpath
             libelf-dev libncurses5-dev
             libncursesw5-dev
-            libssl-dev python 
-            python2.7-dev python3 
-            unzip wget 
-            python-distutils-extra 
-            python3-setuptools 
-            python3-dev 
-            rsync subversion swig time 
-            xsltproc zlib1g-dev 
+            libssl-dev python
+            python2.7-dev python3
+            unzip wget
+            python-distutils-extra
+            python3-setuptools
+            python3-dev
+            rsync subversion swig time
+            xsltproc zlib1g-dev
             libbpf-dev
-          > 
-            sudo -E apt-get -qq 
-            install build-essential 
-            gawk gcc-multilib flex git 
-            gettext libncurses5-dev 
-            libssl-dev python3-
-            distutils rsync unzip 
-            zlib1g-dev
+          >
+            sudo -E apt-get -qq
+            install build-essential
+            gawk gcc-multilib flex git
+            gettext libncurses5-dev
+            libssl-dev
+            python3-distutils rsync
+            unzip zlib1g-dev
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
           sudo -E apt-get -qq autoremove --purge
           sudo -E apt-get -qq clean
@@ -106,7 +106,7 @@ jobs:
           echo "::set-output name=status::success"
 
       # - name: "Add Pull Request #4528"
-        # working-directory: /workdir/openwrt
+      # working-directory: /workdir/openwrt
         # run: |
           # git fetch upstream pull/4528/head:qca8k-backport
           # git merge qca8k-backport
@@ -122,8 +122,6 @@ jobs:
         # continue-on-error: true
         # run: |
           # git fetch upstream pull/4619/head:k510-ath79
-          # git rm target/linux/ath79/patches-5.4/0032-MIPS-ath79-sanitize-symbols.patch
-          # git rm target/linux/ath79/patches-5.4/910-unaligned_access_hacks.patch
           # git commit -a --message "test"
           # git merge k510-ath79
 
@@ -170,7 +168,10 @@ jobs:
 
       # - name: SSH connection to Actions
         # uses: P3TERX/ssh2actions@v1.0.0
-        # if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+        # >
+          # if: (github.event.inputs.ssh == 'true'
+          # && github.event.inputs.ssh  != 'false') 
+          # || contains(github.event.action, 'ssh')
         # env:
           # TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -195,8 +196,12 @@ jobs:
           echo -e "$(nproc) thread compile"
           make -j$(nproc) || make -j1 || make -j1 V=s
           echo "::set-output name=status::success"
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          >
+            grep '^CONFIG_TARGET.*DEVICE.*=y' .config
+            | sed -r 's/.*DEVICE_(.*)=y/\1/'
+            > DEVICE_NAME
+            [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)"
+            > $GITHUB_ENV
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
       - name: Check space usage
