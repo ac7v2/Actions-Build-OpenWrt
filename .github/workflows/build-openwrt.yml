@@ -52,13 +52,6 @@ jobs:
 
           sudo -E apt-get -qq update
 
-          sudo -E apt-get -qq
-          install build-essential
-          gawk flex git
-          libncurses5-dev
-          libssl-dev python3-distutils
-          rsync unzip zlib1g-dev
-
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
 
           sudo -E apt-get -qq autoremove --purge
