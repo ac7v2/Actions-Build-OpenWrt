@@ -1,277 +1,238 @@
-name: Build OpenWrt
-
-env:
-  REPO_URL: https://github.com/openwrt/openwrt
-  REPO_GIT: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: master
-  FEEDS_CONF: feeds.conf.default
-  #CONFIG_FILE: ac7v2.config
+--- 
+env: 
   CONFIG_FILE: ac7v2.test.config
   DIY_P1_SH: diy-part1.sh
   DIY_P2_SH: diy-part2.sh
-  UPLOAD_BIN_DIR: true
-  UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: false
-  UPLOAD_WETRANSFER: false
-  UPLOAD_RELEASE: true
+  FEEDS_CONF: feeds.conf.default
+  REPO_BRANCH: master
+  REPO_GIT: "https://github.com/openwrt/openwrt.git"
+  REPO_URL: "https://github.com/openwrt/openwrt"
   TZ: America/Toronto
-
-on:
-  # push:
-  repository_dispatch:
-  workflow_dispatch:
-    inputs:
-      ssh:
-        description: 'SSH connection to Actions'
-        required: false
-        default: 'false'
-  schedule:
-    - cron: 0 0 * * 0
-
-jobs:
-  build:
+  UPLOAD_BIN_DIR: true
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  UPLOAD_WETRANSFER: false
+jobs: 
+  build: 
     runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      id: checkout
-      uses: actions/checkout@main
-
-    - name: Initialization environment
-      id: initialize
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      if: ${{ success() }} && !cancelled()
-      run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install build-essential ccache ecj fastjar file g++ gawk gettext git java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev python python2.7-dev python3 unzip wget python-distutils-extra python3-setuptools python3-dev rsync subversion swig time xsltproc zlib1g-dev libbpf-dev
-        sudo -E apt-get -qq install build-essential gawk gcc-multilib flex git gettext libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
-        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
-        git config --global user.email "ac7v2@users.noreply.github.com"
-        git config --global user.name "GitHub Actions"
-        echo "::set-output name=status::success"
-
-    - name: Clone source code
-      id: clone-source
-      working-directory: /workdir
-      if: steps.initialize.outputs.status == 'success' && !cancelled()
-      run: |
-        df -hT $PWD
-        git clone $REPO_URL -b $REPO_BRANCH openwrt
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        echo "::set-output name=status::success"
-
-    - name: Setup for merging Pull Requests
-      id: setup-merge
-      working-directory: /workdir/openwrt
-      if: steps.clone-source.outputs.status == 'success' && !cancelled()
-      run: |
-        git remote add upstream $REPO_GIT
-        git checkout -b my-merge-branch
-        echo "::set-output name=status::success"
-
-    #- name: "Add Pull Request #4528"
-      #working-directory: /workdir/openwrt
-      #run: |
-        #git fetch upstream pull/4528/head:qca8k-backport
-        #git merge qca8k-backport
-        
-    #- name: "Add Pull Request #4562"
-      #working-directory: /workdir/openwrt
-      #run: |
-        #git fetch upstream pull/4562/head:dsa-qca8k-leds
-        #git merge dsa-qca8k-leds
-    
-    #- name: "Add Pull Request #4619"
-      #working-directory: /workdir/openwrt
-      #continue-on-error: true
-      #run: |
-        #git fetch upstream pull/4619/head:k510-ath79
-        #git rm target/linux/ath79/patches-5.4/0032-MIPS-ath79-sanitize-symbols.patch
-        #git rm target/linux/ath79/patches-5.4/910-unaligned_access_hacks.patch
-        #git commit -a --message "test"
-        #git merge k510-ath79
-
-    #- name: "Add Pull Request #4622"
-      #working-directory: /workdir/openwrt
-      #run: |
-        #git fetch upstream pull/4622/head:ath79-dsa
-        #git merge ath79-dsa
-
-    - name: Load custom feeds
-      id: load-custom-feeds
-      if: steps.setup-merge.outputs.status == 'success' && !cancelled()
-      run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
-        echo "::set-output name=status::success"
-
-    - name: Update feeds
-      id: update-feeds
-      if: steps.load-custom-feeds.outputs.status == 'success' && !cancelled()
-      run: |
-        cd openwrt && ./scripts/feeds update -a
-        echo "::set-output name=status::success"
-
-    - name: Install feeds
-      id: install-feeds
-      if: steps.update-feeds.outputs.status == 'success' && !cancelled()
-      run: |
-        cd openwrt && ./scripts/feeds install -a
-        echo "::set-output name=status::success"
-
-    - name: Load custom configuration
-      id: load-custom-config
-      if: steps.install-feeds.outputs.status == 'success' && !cancelled()
-      run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
-        echo "::set-output name=status::success"
-
-    #- name: SSH connection to Actions
-      #uses: P3TERX/ssh2actions@v1.0.0
-      #if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
-      #env:
-        #TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        #TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-
-    - name: Download package
-      working-directory: /workdir/openwrt
-      id: package
-      if: steps.load-custom-config.outputs.status == 'success' && !cancelled()
-      run: |
-        make defconfig
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
-        echo "::set-output name=status::success"
-
-    - name: Compile the firmware
-      working-directory: /workdir/openwrt
-      #continue-on-error: true
-      id: compile
-      if: steps.package.outputs.status == 'success' && !cancelled()
-      run: |
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "::set-output name=status::success"
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-
-    - name: Check space usage
-      id: check-space-usage
-      if: steps.compile.outputs.status == 'success' && !cancelled()
-      run: |
-        df -hT
-        echo "::set-output name=status::success"
-
-    - name: Upload bin directory
-      id: upload-bin
-      uses: actions/upload-artifact@main
-      if: steps.check-space-usage.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' && !cancelled()
-      with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
-      run: echo "::set-output name=status::success"
-
-    - name: Organize files
-      id: organize
-      if: steps.upload-bin.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()
-      run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "::set-output name=status::success"
-
-    - name: Upload firmware directory
-      id: upload-firmware-dir
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
-      run: echo "::set-output name=status::success"
-
-    - name: Upload firmware to cowtransfer
-      id: cowtransfer
-      if: steps.organize.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
-      run: |
-        curl -fsSL git.io/file-transfer | sh
-        ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
-        echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
-        echo "::set-output name=url::$(cat cowtransfer.log | grep https | cut -f3 -d" ")"
-
-    - name: Upload firmware to WeTransfer
-      id: wetransfer
-      if: steps.organize.outputs.status == 'success' && env.UPLOAD_WETRANSFER == 'true' && !cancelled()
-      run: |
-        curl -fsSL git.io/file-transfer | sh
-        ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wetransfer.log
-        echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
-        echo "::set-output name=url::$(cat wetransfer.log | grep https | cut -f3 -d" ")"
-
-    - name: Generate release tag
-      id: tag
-      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
-        touch release.txt
-        [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
-        [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
-        echo "::set-output name=status::success"
-
-    - name: Upload firmware to release
-      id: upload-release
-      uses: softprops/action-gh-release@v1
-      if: ${{ success() }} && steps.tag.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
-
-    - name: Delete workflow runs
-      id: delete-old-workflows
-      uses: GitRML/delete-workflow-runs@main
-      if: ${{ success() }} && steps.upload-release.outputs.status == 'success' && !cancelled()
-      with:
-        retain_days: 1
-        keep_minimum_runs: 3
-
-    - name: Remove old Releases
-      id: remove-old-releases
-      uses: dev-drprasad/delete-older-releases@v0.1.0
-      if: ${{ success() }} && env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 3
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: echo "::set-output name=status::success"
-        
-    - name: Create latest tag
-      id: create-latest-tag
-      uses: actions/github-script@v5
-      if: ${{ success() }} && !cancelled()
-      with:
-        script: |
-          github.rest.git.createRef({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            ref: 'refs/tags/latest',
-            sha: context.sha
-          })
-      run: echo "::set-output name=status::success"
+    steps: 
+      - 
+        id: checkout
+        name: Checkout
+        uses: actions/checkout@main
+      - 
+        env: 
+          DEBIAN_FRONTEND: noninteractive
+        id: initialize
+        if: "${{ success() }} && !cancelled()"
+        name: "Initialization environment"
+        run: |
+            sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+            sudo -E apt-get -qq update
+            sudo -E apt-get -qq install build-essential ccache ecj fastjar file g++ gawk gettext git java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev libssl-dev python python2.7-dev python3 unzip wget python-distutils-extra python3-setuptools python3-dev rsync subversion swig time xsltproc zlib1g-dev libbpf-dev
+            sudo -E apt-get -qq install build-essential gawk gcc-multilib flex git gettext libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
+            sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+            sudo -E apt-get -qq autoremove --purge
+            sudo -E apt-get -qq clean
+            sudo timedatectl set-timezone "$TZ"
+            sudo mkdir -p /workdir
+            sudo chown $USER:$GROUPS /workdir
+            git config --global user.email "ac7v2@users.noreply.github.com"
+            git config --global user.name "GitHub Actions"
+            echo "::set-output name=status::success"
+      - 
+        id: clone-source
+        if: "steps.initialize.outputs.status == 'success' && !cancelled()"
+        name: "Clone source code"
+        run: |
+            df -hT $PWD
+            git clone $REPO_URL -b $REPO_BRANCH openwrt
+            ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+            echo "::set-output name=status::success"
+        working-directory: /workdir
+      - 
+        id: setup-merge
+        if: "steps.clone-source.outputs.status == 'success' && !cancelled()"
+        name: "Setup for merging Pull Requests"
+        run: |
+            git remote add upstream $REPO_GIT
+            git checkout -b my-merge-branch
+            echo "::set-output name=status::success"
+        working-directory: /workdir/openwrt
+      - 
+        id: load-custom-feeds
+        if: "steps.setup-merge.outputs.status == 'success' && !cancelled()"
+        name: "Load custom feeds"
+        run: |
+            [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+            chmod +x $DIY_P1_SH
+            cd openwrt
+            $GITHUB_WORKSPACE/$DIY_P1_SH
+            echo "::set-output name=status::success"
+      - 
+        id: update-feeds
+        if: "steps.load-custom-feeds.outputs.status == 'success' && !cancelled()"
+        name: "Update feeds"
+        run: |
+            cd openwrt && ./scripts/feeds update -a
+            echo "::set-output name=status::success"
+      - 
+        id: install-feeds
+        if: "steps.update-feeds.outputs.status == 'success' && !cancelled()"
+        name: "Install feeds"
+        run: |
+            cd openwrt && ./scripts/feeds install -a
+            echo "::set-output name=status::success"
+      - 
+        id: load-custom-config
+        if: "steps.install-feeds.outputs.status == 'success' && !cancelled()"
+        name: "Load custom configuration"
+        run: |
+            [ -e files ] && mv files openwrt/files
+            [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+            chmod +x $DIY_P2_SH
+            cd openwrt
+            $GITHUB_WORKSPACE/$DIY_P2_SH
+            echo "::set-output name=status::success"
+      - 
+        id: package
+        if: "steps.load-custom-config.outputs.status == 'success' && !cancelled()"
+        name: "Download package"
+        run: |
+            make defconfig
+            make download -j8
+            find dl -size -1024c -exec ls -l {} \;
+            find dl -size -1024c -exec rm -f {} \;
+            echo "::set-output name=status::success"
+        working-directory: /workdir/openwrt
+      - 
+        id: compile
+        if: "steps.package.outputs.status == 'success' && !cancelled()"
+        name: "Compile the firmware"
+        run: |
+            echo -e "$(nproc) thread compile"
+            make -j$(nproc) || make -j1 || make -j1 V=s
+            echo "::set-output name=status::success"
+            grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+            [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+            echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+        working-directory: /workdir/openwrt
+      - 
+        id: check-space-usage
+        if: "steps.compile.outputs.status == 'success' && !cancelled()"
+        name: "Check space usage"
+        run: |
+            df -hT
+            echo "::set-output name=status::success"
+      - 
+        id: upload-bin
+        if: "steps.check-space-usage.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' && !cancelled()"
+        name: "Upload bin directory"
+        run: "echo \"::set-output name=status::success\""
+        uses: actions/upload-artifact@main
+        with: 
+          name: "OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}"
+          path: openwrt/bin
+      - 
+        id: organize
+        if: "steps.upload-bin.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' && !cancelled()"
+        name: "Organize files"
+        run: |
+            cd openwrt/bin/targets/*/*
+            rm -rf packages
+            echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+            echo "::set-output name=status::success"
+      - 
+        id: upload-firmware-dir
+        if: "steps.organize.outputs.status == 'success' && !cancelled()"
+        name: "Upload firmware directory"
+        run: "echo \"::set-output name=status::success\""
+        uses: actions/upload-artifact@main
+        with: 
+          name: "OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}"
+          path: "${{ env.FIRMWARE }}"
+      - 
+        id: cowtransfer
+        if: "steps.organize.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()"
+        name: "Upload firmware to cowtransfer"
+        run: |
+            curl -fsSL git.io/file-transfer | sh
+            ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE} 2>&1 | tee cowtransfer.log
+            echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
+            echo "::set-output name=url::$(cat cowtransfer.log | grep https | cut -f3 -d" ")"
+      - 
+        id: wetransfer
+        if: "steps.organize.outputs.status == 'success' && env.UPLOAD_WETRANSFER == 'true' && !cancelled()"
+        name: "Upload firmware to WeTransfer"
+        run: |
+            curl -fsSL git.io/file-transfer | sh
+            ./transfer wet -s -p 16 --no-progress ${FIRMWARE} 2>&1 | tee wetransfer.log
+            echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
+            echo "::set-output name=url::$(cat wetransfer.log | grep https | cut -f3 -d" ")"
+      - 
+        id: tag
+        if: "steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()"
+        name: "Generate release tag"
+        run: |
+            echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
+            touch release.txt
+            [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
+            [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
+            echo "::set-output name=status::success"
+      - 
+        env: 
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        id: upload-release
+        if: "${{ success() }} && steps.tag.outputs.status == 'success' && !cancelled()"
+        name: "Upload firmware to release"
+        uses: softprops/action-gh-release@v1
+        with: 
+          body_path: release.txt
+          files: "${{ env.FIRMWARE }}/*"
+          tag_name: "${{ steps.tag.outputs.release_tag }}"
+      - 
+        id: delete-old-workflows
+        if: "${{ success() }} && steps.upload-release.outputs.status == 'success' && !cancelled()"
+        name: "Delete workflow runs"
+        uses: GitRML/delete-workflow-runs@main
+        with: 
+          keep_minimum_runs: 3
+          retain_days: 1
+      - 
+        env: 
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        id: remove-old-releases
+        if: "${{ success() }} && env.UPLOAD_RELEASE == 'true' && !cancelled()"
+        name: "Remove old Releases"
+        run: "echo \"::set-output name=status::success\""
+        uses: dev-drprasad/delete-older-releases@v0.1.0
+        with: 
+          delete_tags: true
+          keep_latest: 3
+      - 
+        id: create-latest-tag
+        if: "${{ success() }} && !cancelled()"
+        name: "Create latest tag"
+        run: "echo \"::set-output name=status::success\""
+        uses: actions/github-script@v5
+        with: 
+          script: |
+              github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'refs/tags/latest',
+                sha: context.sha
+              })
+name: "Build OpenWrt"
+true: 
+  repository_dispatch: ~
+  schedule: 
+    - 
+      cron: "0 0 * * 0"
+  workflow_dispatch: 
+    inputs: 
+      ssh: 
+        default: "false"
+        description: "SSH connection to Actions"
+        required: false
