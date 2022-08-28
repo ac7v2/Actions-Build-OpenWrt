@@ -31,7 +31,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout
@@ -41,7 +41,7 @@ jobs:
       - name: Initialization environment
         id: initialize
         env:
-        DEBIAN_FRONTEND: noninteractive
+          DEBIAN_FRONTEND: noninteractive
         if: ${{ success() }} && !cancelled()
         run: |
           >
