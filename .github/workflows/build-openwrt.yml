@@ -62,7 +62,7 @@ jobs:
           gettext libncurses5-dev
           libssl-dev python3-distutils
           rsync unzip zlib1g-dev
-          libbpf libbpf-dev
+          libelf-dev
 
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
 
@@ -79,6 +79,29 @@ jobs:
           git config --global user.email "ac7v2@users.noreply.github.com"
 
           git config --global user.name "GitHub Actions"
+
+          echo "::set-output name=status::success"
+
+      - name: Build libbpf
+        id: build-libbpf
+        working-directory: /workdir
+        if: steps.initialize.outputs.status == 'success' && !cancelled()
+        run: >-
+          df -hT $PWD
+
+          git clone https://github.com/libbpf/libbpf.git
+
+          cd libbpf/src
+
+          git pull
+
+          CC=gcc make -j$(nproc)
+          
+          PREFIX=/usr/local/
+          LIBDIR=/usr/local/lib
+          make install install_uapi_headers
+
+          df -hT $PWD
 
           echo "::set-output name=status::success"
 
