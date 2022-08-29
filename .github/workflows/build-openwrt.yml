@@ -57,6 +57,7 @@ jobs:
           gettext libncurses5-dev
           libssl-dev python3-distutils
           rsync unzip zlib1g-dev
+          libbpf-dev
 
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
 
