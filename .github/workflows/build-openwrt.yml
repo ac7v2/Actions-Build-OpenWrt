@@ -49,6 +49,11 @@ jobs:
           /usr/local/lib/android
           /opt/ghc
 
+          sudo add-apt-repository 
+          "deb http://archive.ubuntu.com/ubuntu 
+          $(lsb_release -sc) 
+          main universe restricted multiverse"
+          
           sudo -E apt-get -qq update
 
           sudo -E apt-get -qq install
@@ -57,7 +62,7 @@ jobs:
           gettext libncurses5-dev
           libssl-dev python3-distutils
           rsync unzip zlib1g-dev
-          libbpf-dev
+          libbpf libbpf-dev
 
           sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
 
