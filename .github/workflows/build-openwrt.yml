@@ -96,7 +96,7 @@ jobs:
           git pull
 
           CC=gcc make -j$(nproc)
-          
+
           PREFIX=/usr/local/
           LIBDIR=/usr/local/lib
           make install install_uapi_headers
