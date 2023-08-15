@@ -42,7 +42,7 @@ jobs:
         id: initialize
         env:
           DEBIAN_FRONTEND: noninteractive
-        if: ${{ success() }} && !cancelled()
+        if: (!cancelled()) && steps.checkout.conclusion == 'success'
         run: >-
           sudo rm -rf /etc/apt/sources.list.d/*
           /usr/share/dotnet
@@ -80,26 +80,22 @@ jobs:
 
           git config --global user.name "GitHub Actions"
 
-          echo "::set-output name=status::success"
-
       - name: Clone source code
         id: clone-source
         working-directory: /workdir
-        if: steps.initialize.outputs.status == 'success' && !cancelled()
+        if: steps.initialize.conclusion == 'success' && !cancelled()
         run: |
           df -hT $PWD
           git clone $REPO_URL -b $REPO_BRANCH openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-          echo "::set-output name=status::success"
 
       - name: Setup for merging Pull Requests
         id: setup-merge
         working-directory: /workdir/openwrt
-        if: steps.clone-source.outputs.status == 'success' && !cancelled()
+        if: steps.clone-source.conclusion == 'success' && !cancelled()
         run: |
           git remote add upstream $REPO_GIT
           git checkout -b my-merge-branch
-          echo "::set-output name=status::success"
 
       # - name: "Add Pull Request #4528"
       # working-directory: /workdir/openwrt
@@ -129,43 +125,41 @@ jobs:
 
       - name: Load custom feeds
         id: load-custom-feeds
-        if: steps.setup-merge.outputs.status == 'success' && !cancelled()
+        if: steps.setup-merge.conclusion == 'success' && !cancelled()
         run: |
           [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
           chmod +x $DIY_P1_SH
           cd openwrt
           $GITHUB_WORKSPACE/$DIY_P1_SH
-          echo "::set-output name=status::success"
 
       - name: Update feeds
         id: update-feeds
-        if: steps.load-custom-feeds.outputs.status == 'success' && !cancelled()
+        if: steps.load-custom-feeds.conclusion == 'success' && !cancelled()
         run: |
           cd openwrt && ./scripts/feeds update -a
-          echo "::set-output name=status::success"
 
       - name: Install feeds
         id: install-feeds
-        if: steps.update-feeds.outputs.status == 'success' && !cancelled()
+        if: steps.update-feeds.conclusion == 'success' && !cancelled()
         run: |
           cd openwrt && ./scripts/feeds install -a
-          echo "::set-output name=status::success"
 
       - name: Load custom configuration
         id: load-custom-config
-        if: steps.install-feeds.outputs.status == 'success' && !cancelled()
+        if: steps.install-feeds.conclusion == 'success' && !cancelled()
         run: |
           [ -e files ] && mv files openwrt/files
           [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
           chmod +x $DIY_P2_SH
           cd openwrt
           $GITHUB_WORKSPACE/$DIY_P2_SH
-          echo "::set-output name=status::success"
 
       - name: SSH connection to Actions
+        id: ssh-to-action
         uses: P3TERX/ssh2actions@v1.0.0
         if: >
-          (github.event.inputs.ssh == 'true'
+          steps.load-custom-config.conclusion == 'success' && !cancelled()
+          && (github.event.inputs.ssh == 'true'
           && github.event.inputs.ssh  != 'false')
           || contains(github.event.action, 'ssh')
         env:
@@ -174,26 +168,24 @@ jobs:
 
       - name: Download package
         working-directory: /workdir/openwrt
-        id: package
-        if: steps.load-custom-config.outputs.status == 'success' && !cancelled()
+        id: download-package
+        if: steps.ssh-to-action.conclusion == 'success' && !cancelled()
         run: |
           make defconfig
           make download -j $(($(nproc)+1))
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
-          echo "::set-output name=status::success"
 
       - name: Compile the firmware
         working-directory: /workdir/openwrt
         # continue-on-error: true
         id: compile
-        if: steps.package.outputs.status == 'success' && !cancelled()
+        if: steps.download-package.conclusion == 'success' && !cancelled()
         run: |
           date
           echo -e "$(nproc) thread compile"
           make -j $(($(nproc)+1)) || make -j1 || make -j1 V=s
           date
-          echo "::set-output name=status::success"
           >
             grep '^CONFIG_TARGET.*DEVICE.*=y' .config
             | sed -r 's/.*DEVICE_(.*)=y/\1/'
@@ -204,15 +196,15 @@ jobs:
 
       - name: Check space usage
         id: check-space-usage
-        if: steps.compile.outputs.status == 'success' && !cancelled()
+        if: steps.compile.conclusion == 'success' && !cancelled()
         run: |
           df -hT
-          echo "::set-output name=status::success"
 
       - name: Upload bin directory
+        id: upload-bin-dir
         uses: actions/upload-artifact@main
         if: >
-          steps.compile.outputs.status == 'success'
+          steps.check-space-usage.conclusion == 'success'
           && env.UPLOAD_BIN_DIR == 'true'
           && !cancelled()
         with:
@@ -222,19 +214,18 @@ jobs:
       - name: Organize files
         id: organize
         if: >
-          steps.compile.outputs.status == 'success'
+          steps.upload-bin-dir.conclusion == 'success'
           && env.UPLOAD_FIRMWARE == 'true'
           && !cancelled()
         run: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-          echo "::set-output name=status::success"
 
       - name: Upload firmware directory
         id: upload-firmware-dir
         uses: actions/upload-artifact@main
-        if: steps.organize.outputs.status == 'success' && !cancelled()
+        if: steps.organize.conclusion == 'success' && !cancelled()
         with:
           name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
@@ -242,7 +233,7 @@ jobs:
       - name: Upload firmware to cowtransfer
         id: cowtransfer
         if: >-
-          steps.organize.outputs.status == 'success'
+          steps.upload-firmware-dir.conclusion == 'success'
           && env.UPLOAD_COWTRANSFER == 'true'
           && !cancelled()
         run: >-
@@ -262,7 +253,7 @@ jobs:
       - name: Upload firmware to WeTransfer
         id: wetransfer
         if: >-
-          steps.organize.outputs.status == 'success'
+          steps.upload-firmware-dir.conclusion == 'success'
           && env.UPLOAD_WETRANSFER == 'true'
           && !cancelled()
         run: >-
@@ -282,7 +273,7 @@ jobs:
       - name: Generate release tag
         id: tag
         if: >-
-          steps.organize.outputs.status == 'success'
+          steps.upload-firmware-dir.conclusion == 'success'
           && env.UPLOAD_RELEASE == 'true'
           && !cancelled()
         run: >-
@@ -298,12 +289,11 @@ jobs:
           && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})"
           >> release.txt
 
-          echo "::set-output name=status::success"
-
       - name: Upload firmware to release
+        id: upload-release
         uses: softprops/action-gh-release@v1
         if: >-
-          steps.tag.outputs.status == 'success'
+          steps.tag.conclusion == 'success'
           && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -313,9 +303,10 @@ jobs:
           files: ${{ env.FIRMWARE }}/*
 
       - name: Delete workflow runs
+        id: delete-workflows
         uses: GitRML/delete-workflow-runs@main
         if: >-
-          steps.tag.outputs.status == 'success'
+          steps.upload-release.conclusion == 'success'
           && !cancelled()
         with:
           retain_days: 1
@@ -325,7 +316,7 @@ jobs:
         id: remove-old-releases
         uses: dev-drprasad/delete-older-releases@v0.1.0
         if: >-
-          steps.tag.outputs.status == 'success'
+          steps.delete-workflows.conclusion == 'success'
           && env.UPLOAD_RELEASE == 'true'
           && !cancelled()
         with:
@@ -337,7 +328,7 @@ jobs:
       - name: Create latest tag
         uses: actions/github-script@v5
         if: >-
-          steps.tag.outputs.status == 'success'
+          steps.remove-old-releases.conclusion == 'success'
           && !cancelled()
         with:
           script: |
