@@ -169,7 +169,7 @@ jobs:
       - name: Download package
         working-directory: /workdir/openwrt
         id: download-package
-        if: steps.ssh-to-action.conclusion == 'success' && !cancelled()
+        if: steps.load-custom-config.conclusion == 'success' && !cancelled()
         run: |
           make defconfig
           make download -j $(($(nproc)+1))
